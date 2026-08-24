@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Life Eco — Email confirmation</title>
+<style>
+  :root {
+    --brand: #2D3C59;
+    --cream: #FBF3DE;
+    --ink: #1E2739;
+    --sage: #94A378;
+    --success: #4F6338;
+    --gold: #E5BA41;
+    --surface: #FFFFFF;
+    --muted: rgba(30, 39, 57, .68);
+    --hairline: rgba(30, 39, 57, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --brand: #9DB0D2;
+      --cream: #141B28;
+      --ink: #FBF3DE;
+      --success: #B7C79B;
+      --surface: #1E2839;
+      --muted: rgba(251, 243, 222, .70);
+      --hairline: rgba(251, 243, 222, .14);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    max-width: 420px;
+    width: 100%;
+    padding: 40px 32px 32px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  }
+  .mark {
+    width: 56px; height: 56px;
+    margin: 0 auto 24px;
+    display: block;
+  }
+  h1 {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 0 0 12px;
+    letter-spacing: -.01em;
+  }
+  p { margin: 0 0 8px; color: var(--muted); font-size: 15px; }
+  .app {
+    display: inline-block;
+    margin-top: 28px;
+    padding: 13px 28px;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--cream);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .app { color: #141B28; }
+  }
+  .hint { margin-top: 18px; font-size: 13.5px; color: var(--muted); }
+  .brandline {
+    margin-top: 32px; padding-top: 20px;
+    border-top: 1px solid var(--hairline);
+    font-size: 13px; color: var(--muted); letter-spacing: .02em;
+  }
+</style>
+</head>
+<body>
+  <main class="card" role="main">
+    <svg class="mark" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      <circle cx="28" cy="28" r="26" stroke="var(--sage)" stroke-width="2.5" opacity=".45"/>
+      <path id="glyph" d="M17 28.5L24.5 36L39 21" stroke="var(--success)"
+            stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1 id="headline">Checking your link…</h1>
+    <p id="detail"></p>
+    <a class="app" id="open" href="com.economichelper://login-callback">Open Life Eco</a>
+    <p class="hint" id="hint">If the app doesn’t open, launch it from your home screen and sign in.</p>
+    <div class="brandline">Life&nbsp;Eco</div>
+  </main>
+
+<script>
+(function () {
+  // Supabase puts its result in BOTH the query string and the URL fragment.
+  // The fragment is the authoritative one for implicit-flow links, so read it
+  // first and let the query string stand in when there is no fragment at all.
+  function params() {
+    var out = {};
+    function soak(s) {
+      if (!s) return;
+      s.replace(/^[?#]/, '').split('&').forEach(function (pair) {
+        if (!pair) return;
+        var i = pair.indexOf('=');
+        var k = decodeURIComponent(i < 0 ? pair : pair.slice(0, i));
+        var v = i < 0 ? '' : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, ' '));
+        if (out[k] === undefined) out[k] = v;
+      });
+    }
+    soak(window.location.hash);
+    soak(window.location.search);
+    return out;
+  }
+
+  var p = params();
+  var headline = document.getElementById('headline');
+  var detail = document.getElementById('detail');
+  var glyph = document.getElementById('glyph');
+
+  var code = p.error_code || '';
+  var err = p.error || '';
+
+  // 🔴 The expired/used case is NOT an exception here — a one-time token is
+  // routinely burned by a mail scanner prefetching the link, which confirms the
+  // address and then hands the human an "expired" URL. Saying "verified" would
+  // be a lie and saying "error" would be alarming, so it says what is true:
+  // the link is spent, and the account is very likely ready.
+  if (!err) {
+    headline.textContent = 'Your email is verified';
+    detail.textContent = 'You can sign in to Life Eco now.';
+  } else if (code === 'otp_expired' || code === 'access_denied' || err === 'access_denied') {
+    headline.textContent = 'This link has already been used';
+    detail.textContent =
+      'That usually means your address is confirmed — links can be opened once, ' +
+      'and mail apps sometimes open them for you. Try signing in; if it still ' +
+      'asks you to confirm, request a new link from the app.';
+    glyph.setAttribute('d', 'M20 20L36 36M36 20L20 36');
+    glyph.setAttribute('stroke', 'var(--gold)');
+  } else {
+    headline.textContent = 'Something went wrong with this link';
+    detail.textContent = p.error_description ||
+      'Please request a new confirmation link from the app.';
+    glyph.setAttribute('d', 'M20 20L36 36M36 20L20 36');
+    glyph.setAttribute('stroke', 'var(--gold)');
+  }
+
+  // A custom scheme does nothing on a desktop browser, so don't promise it one.
+  var mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  if (!mobile) {
+    document.getElementById('open').style.display = 'none';
+    document.getElementById('hint').textContent =
+      'Open Life Eco on your phone and sign in.';
+  }
+})();
+</script>
+</body>
+</html>
