@@ -1,7 +1,7 @@
 # Privacy policy
 
 _Effective 2026-08-14_
-_Version 1_
+_Version v1.0_
 
 Example Text
 
