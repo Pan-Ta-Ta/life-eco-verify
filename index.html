@@ -154,12 +154,40 @@
     glyph.setAttribute('stroke', 'var(--gold)');
   }
 
+  // The deep link CARRIES the result, or opening the app achieves nothing
+  // (6-S3, owner 2026-08-25: verifying should continue the journey, not send
+  // the user back to sign in).
+  //
+  // The button used to be a bare `com.economichelper://login-callback`. That
+  // opens the app with NO SESSION: under PKCE the authorisation `code`
+  // arrives here in the query string, and under the implicit flow the tokens
+  // arrive in the fragment — and either way, an app opened without them is an
+  // app that has to ask for a password again. Forwarding the whole of what we
+  // were handed lets supabase_flutter's own deep-link handler finish the job.
+  // The PKCE verifier lives in the app that STARTED sign-up, which is the
+  // same install on the same device, so the exchange succeeds there and only
+  // there — which is the property that makes handing the code over safe.
+  var open = document.getElementById('open');
+  if (!err) {
+    var carried = (window.location.search || '') + (window.location.hash || '');
+    if (carried) {
+      open.setAttribute('href', 'com.economichelper://login-callback' + carried);
+    }
+  }
+
   // A custom scheme does nothing on a desktop browser, so don't promise it one.
   var mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
   if (!mobile) {
-    document.getElementById('open').style.display = 'none';
+    open.style.display = 'none';
     document.getElementById('hint').textContent =
       'Open Life Eco on your phone and sign in.';
+  } else if (!err) {
+    // The wording is a claim about what the tap DOES. Promising to "open the
+    // app" understates a button that now signs the user in, and a user who
+    // does not expect to be signed in is a user who taps something else.
+    open.textContent = 'Continue in Life Eco';
+    document.getElementById('hint').textContent =
+      'This takes you straight back into the app - no need to sign in again.';
   }
 })();
 </script>
